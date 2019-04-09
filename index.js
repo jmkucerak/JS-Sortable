@@ -219,6 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // to reflect DOM changes.
             panelOver.position = Array.from(this.element.getElementsByClassName('panel')).indexOf(panelOver.element)
             shadow.position = Array.from(this.element.getElementsByClassName('panel')).indexOf(shadow.element)
+
+            // Recalculate midline of panel the cursor is over.
+            // Fixes odd behavior when Sortable container has overflow.
+            panelOver.middle = panelOver.element.offsetTop + (panelOver.element.offsetHeight / 2)
           }
         }
       }
