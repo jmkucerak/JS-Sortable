@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // Only track mouse movement over the sortable container.
           this.element.addEventListener('mousemove', e => {
             e.preventDefault()
-            this.handleMouseMove(e.clientY)
+            this.handleMouseMove(e.pageY)
           })
   
           // The mouse up event will be captured regardless of 
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
           for (let i = 0; i < dragHandles.length; i++) {
             dragHandles[i].addEventListener('mousedown', e => {
               e.preventDefault()
-              this.handleMouseDown(i, { x: e.clientX, y: e.clientY })
+              this.handleMouseDown(i, { x: e.clientX, y: e.pageY })
             })
   
             panels[i].addEventListener('mouseenter', e => {
