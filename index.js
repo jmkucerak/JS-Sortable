@@ -182,6 +182,7 @@ function sortable(element, options) {
         // Process mouse up if there is an active panel.
         if (panelActive) {
             // Remove properties required for sorting
+            // @todo Make more robust to allow inline-style restoration.
             panelActive.style.cssText = ''
             panelActive.classList.remove('sorting')
 
