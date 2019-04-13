@@ -20,6 +20,8 @@ function sortable(element, options) {
             {
                 panel: null,
                 drag: null,
+                vertical: true,
+                horizontal: true,
                 sortStart: null,
                 sortChange: null,
                 sortEnd: null
@@ -36,7 +38,11 @@ function sortable(element, options) {
      * Reference to all sortable panels, element the cursor is currently
      * over and the relative position of the cursor to the selected sortable.
      */
-    let panels, panelOver, mouseOffset
+    let panels, panelElements
+    let offset = {
+        x: 0,
+        y: 0
+    }
     // Reference to placeholder element showing where a sortable will be placed.
     let shadow = {
         element: null,
@@ -53,7 +59,7 @@ function sortable(element, options) {
             }
 
             // Store all panel elements.
-            let panelElements = this.element.getElementsByClassName(
+            panelElements = this.element.getElementsByClassName(
                 this.options.panel.class
             )
 
@@ -84,7 +90,7 @@ function sortable(element, options) {
             // Only track mouse movement over the sortable container.
             this.element.addEventListener('mousemove', e => {
                 e.preventDefault()
-                this.handleMouseMove(e.pageY)
+                this.handleMouseMove({ x: e.pageX, y: e.pageY })
             })
 
             // The mouse up event will be captured regardless of 
@@ -99,19 +105,17 @@ function sortable(element, options) {
             for (let i = 0; i < dragHandles.length; i++) {
                 dragHandles[i].addEventListener('mousedown', e => {
                     e.preventDefault()
-                    this.handleMouseDown(i, { x: e.clientX, y: e.pageY })
+                    this.handleMouseDown(i, { x: e.pageX, y: e.pageY })
                 })
 
                 panels[i].addEventListener('mouseenter', e => {
                     e.preventDefault()
                     // Only process if sorting.
                     if (panelActive) {
-                        // Store reference and meta of element under the cursor.
-                        panelOver = {
+                        this.mouseEnter({
                             element: e.target,
-                            middle: e.target.offsetTop + (e.target.offsetHeight / 2),
-                            position: Array.from(this.element.getElementsByClassName('panel')).indexOf(e.target)
-                        }
+                            position: Array.from(panelElements).indexOf(e.target)
+                        })
                     }
                 })
 
@@ -137,7 +141,12 @@ function sortable(element, options) {
 
         // Store offset between top of active panel and mouse position.
         // This prevents the panel position from 'jumping' to the cursor.
-        mouseOffset = mouse.y - panelActive.offsetTop
+        offset.y = mouse.y - panelActive.offsetTop
+        offset.x = mouse.x - panelActive.offsetLeft
+
+        // Calculate top and left position of active Panel
+        let left = (this.options.horizontal) ? mouse.x - offset.x + 'px' : panelActive.style.left
+        let top = (this.options.vertical) ? mouse.y - offset.y + 'px' : panelActive.style.top
 
         // Modify properties of the panelActive to allow for seamless
         // dragging.
@@ -145,7 +154,8 @@ function sortable(element, options) {
         panelActive.style.width = width
         panelActive.style.height = height
         panelActive.style.pointerEvents = 'none'
-        panelActive.style.top = mouse.y - mouseOffset + 'px'
+        panelActive.style.top = top
+        panelActive.style.left = left
 
         // Generate and insert a 'shadow' to indicate where the
         // panelActive will be placed when the mouse is released.
@@ -154,6 +164,7 @@ function sortable(element, options) {
         shadowNode.classList.add(this.options.panel.classShadow)
         shadowNode.classList.add(this.options.panel.class)
         shadowNode.style.height = height
+        shadowNode.style.width = width
         shadow.element = this.element.insertBefore(shadowNode, panelActive)
 
         // This is done so that the position of the shadow
@@ -161,7 +172,7 @@ function sortable(element, options) {
         this.element.append(panelActive)
 
         // Store initial position of shadow on sort start.
-        shadow.position = Array.from(this.element.getElementsByClassName('panel')).indexOf(shadow.element)
+        shadow.position = Array.from(panelElements).indexOf(shadow.element)
 
         // Hook into the start of sorting.
         if (this.options.sortStart) this.options.sortStart()
@@ -170,15 +181,12 @@ function sortable(element, options) {
     this.handleMouseUp = function () {
         // Process mouse up if there is an active panel.
         if (panelActive) {
-            // Remove properties required for sorting.
-            panelActive.style.removeProperty('top')
-            panelActive.style.removeProperty('width')
-            panelActive.style.removeProperty('height')
-            panelActive.style.removeProperty('pointer-events')
+            // Remove properties required for sorting
+            panelActive.style.cssText = ''
             panelActive.classList.remove('sorting')
 
             // Reset mouse offset.
-            mouseOffset = 0
+            offset = { x: 0, y: 0 }
 
             // Place the active panel before the shadow in the DOM.
             this.element.insertBefore(panelActive, shadow.element)
@@ -192,37 +200,28 @@ function sortable(element, options) {
         }
     }
 
-    this.handleMouseMove = function (mouseY) {
+    this.handleMouseMove = function (mouse) {
         // Process only if sorting.
         if (panelActive) {
+            // Calculate top and left position of active Panel
+            let left = (this.options.horizontal) ? mouse.x - offset.x + 'px' : panelActive.style.left
+            let top = (this.options.vertical) ? mouse.y - offset.y + 'px' : panelActive.style.top
             // Set new Top position of active panel.
-            panelActive.style.top = mouseY - mouseOffset + 'px'
-            // Process only if over another panel.
-            if (panelOver !== null) {
-                // Tests if cursor is above or below the midline of the
-                // panel that it is over.
-                if (mouseY < panelOver.middle) {  // below midline
-                    // Process if the Panel the cursor is over is not the bottom.
-                    if (shadow.position + 1 !== panelOver.position) {
-                        // Insert the shadow into the DOM
-                        this.element.insertBefore(shadow.element, panelOver.element)
-                    }
-                } else { // above midline
-                    // Process if the Panel the cursor is over is not the top.
-                    if (shadow.position - 1 !== panelOver.position) {
-                        // Insert the shadow into the DOM
-                        this.element.insertBefore(shadow.element, panelOver.element.nextSibling)
-                    }
-                }
-                // Update positions of the shadow and Panel the cursor is over
-                // to reflect DOM changes.
-                panelOver.position = Array.from(this.element.getElementsByClassName('panel')).indexOf(panelOver.element)
-                shadow.position = Array.from(this.element.getElementsByClassName('panel')).indexOf(shadow.element)
-
-                // Recalculate midline of panel the cursor is over.
-                // Fixes odd behavior when Sortable container has overflow.
-                panelOver.middle = panelOver.element.offsetTop + (panelOver.element.offsetHeight / 2)
-            }
+            panelActive.style.top = top
+            panelActive.style.left = left
         }
+    }
+
+    this.mouseEnter = function (panelOver) {
+        // Determine if shadow is higher than the element under the cursor in the DOM.
+        if (shadow.position < panelOver.position) {
+            // Insert shadow after the element under the cursor.
+            this.element.insertBefore(shadow.element, panelOver.element.nextSibling)
+        } else {
+            // Insert the shadow before the element under the cursor.
+            this.element.insertBefore(shadow.element, panelOver.element)
+        }
+        // Update the position of the shadow.
+        shadow.position = Array.from(panelElements).indexOf(shadow.element)
     }
 }
